@@ -9,7 +9,13 @@ export default function Navbar() {
     const pathname = usePathname();
 
     const navLinks = [
-        { href: "http://localhost:3001", label: "Collector PWA", icon: Smartphone, step: "Step 6", external: true },
+        {
+            href: process.env.NEXT_PUBLIC_COLLECTOR_PWA_URL || "https://kabadiwala-collector-pwa.vercel.app",
+            label: "Collector PWA",
+            icon: Smartphone,
+            step: "Step 6",
+            external: true,
+        },
         { href: "/", label: "Aggregator Portal", icon: Boxes, step: "Step 3" },
         { href: "/smelter", label: "Smelter & EPR", icon: Factory, step: "Step 4" },
         { href: "/admin/dashboard", label: "Ministry Analytics", icon: LayoutDashboard, step: "Step 5" },
@@ -41,11 +47,10 @@ export default function Navbar() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                    isActive
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${isActive
                                         ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
                                         : "text-slate-300 hover:text-white hover:bg-slate-800"
-                                }`}
+                                    }`}
                             >
                                 <Icon className="w-3.5 h-3.5" />
                                 <span>{link.label}</span>
