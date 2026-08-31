@@ -10,7 +10,7 @@ export default function Navbar() {
 
     const navLinks = [
         {
-            href: process.env.NEXT_PUBLIC_COLLECTOR_PWA_URL || "https://kabadiwala-collector-pwa.vercel.app",
+            href: process.env.NEXT_PUBLIC_COLLECTOR_PWA_URL || "https://kabadiwala-sih-26229-pwa.vercel.app/",
             label: "Collector PWA",
             icon: Smartphone,
             step: "Step 6",
@@ -48,8 +48,8 @@ export default function Navbar() {
                                 key={link.href}
                                 href={link.href}
                                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${isActive
-                                        ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
-                                        : "text-slate-300 hover:text-white hover:bg-slate-800"
+                                    ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-800"
                                     }`}
                             >
                                 <Icon className="w-3.5 h-3.5" />
