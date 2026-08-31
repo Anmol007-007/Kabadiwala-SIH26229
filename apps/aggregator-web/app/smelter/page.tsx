@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://kabadiwala-backend-4vkq.onrender.com';
+
 export default function SmelterPortal() {
     const [batchHash, setBatchHash] = useState('');
     const [receivedWeight, setReceivedWeight] = useState('');
@@ -11,8 +13,8 @@ export default function SmelterPortal() {
     const handleVerify = async () => {
         setLoading(true);
         try {
-            // Calls the FastAPI backend we just updated
-            const res = await fetch('http://127.0.0.1:8000/api/v1/epr/verify', {
+            // Calls the FastAPI backend
+            const res = await fetch(`${BASE_URL}/api/v1/epr/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

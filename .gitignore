@@ -25,6 +25,7 @@ __pycache__/
 .env.local
 .env.*.local
 *.env
+!.env.example
 
 # Generated certificates / temp files
 certificates/

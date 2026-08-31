@@ -23,6 +23,8 @@ import {
     OfflineTransaction
 } from '../utils/db';
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://kabadiwala-backend-4vkq.onrender.com';
+
 export default function CollectorPWA() {
     const [isRecording, setIsRecording] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -88,7 +90,7 @@ export default function CollectorPWA() {
             if (unsynced.length === 0) return;
 
             setSyncing(true);
-            const res = await fetch('http://localhost:8000/api/v1/transactions/sync', {
+            const res = await fetch(`${BASE_URL}/api/v1/transactions/sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -148,7 +150,7 @@ export default function CollectorPWA() {
         formData.append('audio', audioBlob, 'record.wav');
 
         try {
-            const res = await fetch('http://localhost:8000/api/v1/transactions/voice-log', {
+            const res = await fetch(`${BASE_URL}/api/v1/transactions/voice-log`, {
                 method: 'POST',
                 body: formData
             });
@@ -183,7 +185,7 @@ export default function CollectorPWA() {
             // Attempt backend sync
             let synced = false;
             try {
-                const res = await fetch('http://localhost:8000/api/v1/transactions/sync', {
+                const res = await fetch(`${BASE_URL}/api/v1/transactions/sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

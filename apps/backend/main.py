@@ -196,11 +196,12 @@ async def verify_batch_and_generate_epr(request: VerifyBatchRequest):
         file_name = f"certificates/EPR_{uuid.uuid4().hex[:8]}.pdf"
         pdf.output(file_name)
         
+        backend_base = os.getenv("BACKEND_URL", "https://kabadiwala-backend-4vkq.onrender.com").rstrip("/")
         return {
             "status": "success",
             "message": "Batch verified and EPR Certificate generated.",
             "variance_kg": variance,
-            "certificate_url": f"http://127.0.0.1:8000/api/v1/epr/download?file={file_name}"
+            "certificate_url": f"{backend_base}/api/v1/epr/download?file={file_name}"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF Generation Error: {str(e)}")

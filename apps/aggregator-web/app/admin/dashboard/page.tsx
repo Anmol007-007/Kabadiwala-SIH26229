@@ -14,6 +14,8 @@ const HeatmapMap = dynamic(() => import("@/components/HeatmapMap"), {
     )
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://kabadiwala-backend-4vkq.onrender.com';
+
 export default function AdminDashboard() {
     const [data, setData] = useState<{ kpis: any; spatial_data: any } | null>(null);
     const [selectedMaterial, setSelectedMaterial] = useState<string>("ALL");
@@ -24,7 +26,7 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/admin/analytics");
+            const res = await fetch(`${BASE_URL}/api/admin/analytics`);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.detail || `HTTP ${res.status}: Server Error`);
