@@ -10,7 +10,7 @@ export default function Navbar() {
 
     const navLinks = [
         {
-            href: process.env.NEXT_PUBLIC_COLLECTOR_PWA_URL || "https://kabadiwala-sih-26229-pwa.vercel.app/",
+            href: "https://kabadiwala-sih-26229-pwa.vercel.app/",
             label: "Collector PWA",
             icon: Smartphone,
             step: "Step 6",
