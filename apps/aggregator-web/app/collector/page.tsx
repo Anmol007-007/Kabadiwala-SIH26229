@@ -44,7 +44,7 @@ export default function CollectorPWA() {
   const [selectedGrade, setSelectedGrade] = useState("Grade A: Mobile Board");
   const [weightStr, setWeightStr] = useState("8");
   const [condition, setCondition] = useState("Clean & Sorted");
-  const [activeCreatedLot, setActiveCreatedLot] = useState<ScrapLot | null>(null);
+  const [activeCreatedLotId, setActiveCreatedLotId] = useState<string | null>(null);
   const [showCustodyDialog, setShowCustodyDialog] = useState(false);
   const [quizAnswered, setQuizAnswered] = useState<boolean | null>(null);
 
@@ -256,12 +256,30 @@ export default function CollectorPWA() {
       audioTranscript: audioTranscript || undefined,
     });
 
-    setActiveCreatedLot(newLot);
+    setActiveCreatedLotId(newLot.id);
     setStep(4);
   };
 
   // Find user's active lot if one was just created or from list
-  const currentLot = activeCreatedLot || lots[0];
+  const currentLot =
+    (activeCreatedLotId ? lots.find((l) => l.id === activeCreatedLotId) : null) ||
+    lots[0] || {
+      id: "LOT-NGP-84741",
+      collector: "Ramesh Kumar (रमेश)",
+      collectorId: "KC-NGP-4417",
+      location: "Kalmna - Wadi Belt, Nagpur",
+      material: "Circuit Boards",
+      category: "PCBs" as const,
+      grade: "Grade A: Mobile Board",
+      weight_kg: 8,
+      ratePerKg: 720,
+      totalPayout: 5760,
+      status: "PENDING_QUOTE" as const,
+      timestamp: "Just now",
+      hash: "000000000000",
+      buyerName: "Wadi Scrap Aggregators",
+      buyerReg: "CPCB: MH/EPR/A/2024/00522",
+    };
 
   return (
     <div className="min-h-screen bg-ink-50/50 text-ink-900 p-3 sm:p-6 font-sans">
@@ -431,7 +449,7 @@ export default function CollectorPWA() {
                   {lot.status === "OFFER_ACCEPTED" && (
                     <button
                       onClick={() => {
-                        setActiveCreatedLot(lot);
+                        setActiveCreatedLotId(lot.id);
                         setActiveTab("newlot");
                         setStep(4);
                       }}
@@ -714,8 +732,8 @@ export default function CollectorPWA() {
               {/* STEP 4: BUYER QUOTE & DUAL QR HANDOVER */}
               {step === 4 && (
                 <div className="space-y-4">
-                  {currentLot.status === "PENDING_QUOTE" ? (
-                    <div className="p-5 bg-white border border-ink-100 rounded-3xl space-y-4 shadow-2xs text-center">
+                  {currentLot.status === "PENDING_QUOTE" && (
+                    <div key="pending-quote" className="p-5 bg-white border border-ink-100 rounded-3xl space-y-4 shadow-2xs text-center">
                       <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto ring-1 ring-amber-100">
                         <RefreshCw className="w-6 h-6 animate-spin" />
                       </div>
@@ -740,8 +758,50 @@ export default function CollectorPWA() {
                         (डेमो) एग्रीगेटर का आधिकारिक ऑफर स्वीकार करें &rarr;
                       </button>
                     </div>
-                  ) : currentLot.status === "OFFER_ACCEPTED" ? (
-                    <div className="text-center p-5 bg-white border border-leaf-600/40 rounded-3xl space-y-4 shadow-sm">
+                  )}
+
+                  {currentLot.status === "QUOTE_SENT" && (
+                    <div key="quote-received" className="p-5 bg-white border-2 border-blue-500/40 rounded-3xl space-y-4 shadow-sm animate-fade-in text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto ring-1 ring-blue-100">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="font-mono text-xs text-blue-600 font-bold uppercase bg-blue-50 px-2 py-0.5 rounded-full ring-1 ring-blue-100">
+                          नया ऑफर प्राप्त हुआ
+                        </span>
+                        <h4 className="font-extrabold text-base text-ink-900 mt-2">
+                          {currentLot.buyerName} ने भाव भेजा है
+                        </h4>
+                        <p className="text-xs text-ink-500 mt-0.5">{currentLot.id}</p>
+                      </div>
+
+                      <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-2 text-left">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-ink-600">सामग्री & वजन:</span>
+                          <span className="font-bold text-ink-900">{currentLot.weight_kg} kg ({currentLot.material})</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-ink-600">स्वीकृत भाव (Offered Rate):</span>
+                          <span className="font-mono font-bold text-blue-700 text-sm">₹{currentLot.ratePerKg}/kg</span>
+                        </div>
+                        <div className="pt-2 border-t border-blue-100 flex justify-between items-center">
+                          <span className="text-xs font-bold text-ink-800">कुल भुगतान (Total Payout):</span>
+                          <span className="font-mono font-black text-leaf-600 text-lg">₹{currentLot.totalPayout.toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => acceptQuote(currentLot.id)}
+                        className="w-full py-3 bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>ऑफर स्वीकार करें (Accept ₹{currentLot.totalPayout.toLocaleString("en-IN")}) &rarr;</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {currentLot.status === "OFFER_ACCEPTED" && (
+                    <div key="offer-accepted" className="text-center p-5 bg-white border border-leaf-600/40 rounded-3xl space-y-4 shadow-sm animate-fade-in">
                       <h4 className="font-extrabold text-sm text-ink-900">माल का डिजिटल हैंडओवर (Dual QR Handshake)</h4>
                       <p className="text-xs text-ink-500">खरीदार की दुकान पर यह QR कोड स्कैन कराएं</p>
 
@@ -762,8 +822,10 @@ export default function CollectorPWA() {
                         हैंडओवर पूरा करें &bull; रसीद प्राप्त करें
                       </button>
                     </div>
-                  ) : (
-                    <div className="p-5 bg-white border border-leaf-600/40 rounded-3xl space-y-4 shadow-sm animate-fade-in">
+                  )}
+
+                  {currentLot.status === "HANDED_OVER" && (
+                    <div key="handed-over" className="p-5 bg-white border border-leaf-600/40 rounded-3xl space-y-4 shadow-sm animate-fade-in">
                       <div className="text-center pb-3 border-b border-ink-100 space-y-1">
                         <span className="text-[10px] font-mono text-leaf-700 font-bold uppercase bg-leaf-50 px-2 py-0.5 rounded-full ring-1 ring-leaf-100">
                           खान मंत्रालय &bull; डिजिटल पावती

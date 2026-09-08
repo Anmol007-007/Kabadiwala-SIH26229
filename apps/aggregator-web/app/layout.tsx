@@ -28,10 +28,14 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="hi"
+      translate="no"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased notranslate`}
     >
-      <body className="min-h-full flex flex-col bg-white text-ink-900 antialiased selection:bg-leaf-100 selection:text-leaf-900">
+      <head>
+        <meta name="google" content="notranslate" />
+      </head>
+      <body className="min-h-full flex flex-col bg-white text-ink-900 antialiased selection:bg-leaf-100 selection:text-leaf-900 notranslate">
         <AppProvider>
           <Navbar />
           <ToastBanner />
@@ -41,3 +45,4 @@ export default function RootLayout({
     </html>
   );
 }
+

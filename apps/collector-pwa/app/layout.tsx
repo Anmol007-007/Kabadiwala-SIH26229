@@ -13,8 +13,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en">
-            <body className="bg-neutral-950 antialiased min-h-screen flex flex-col">
+        <html lang="hi" translate="no" className="notranslate">
+            <head>
+                <meta name="google" content="notranslate" />
+            </head>
+            <body className="bg-neutral-950 antialiased min-h-screen flex flex-col notranslate">
                 <PwaNavbar />
                 <div className="flex-1">{children}</div>
             </body>
