@@ -7,7 +7,11 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/kabadiwala")
 
-engine = create_engine(DATABASE_URL)
+connect_args = {}
+if "postgresql" in DATABASE_URL:
+    connect_args = {"connect_timeout": 1}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
