@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 
 export interface ScrapLot {
   id: string;
@@ -81,6 +81,14 @@ export interface RateItem {
   up: boolean;
   minKg: number;
   audioText: string;
+}
+
+interface SyncPayload {
+  lots: ScrapLot[];
+  floorStock: FloorStockItem[];
+  loads: BulkLoad[];
+  reconciliations: EPRRecord[];
+  auditLogs: AuditLogItem[];
 }
 
 interface AppContextType {
@@ -337,13 +345,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loads, setLoads] = useState<BulkLoad[]>(SEED_LOADS);
   const [reconciliations, setReconciliations] = useState<EPRRecord[]>(SEED_RECONCILIATIONS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(SEED_AUDIT_LOGS);
-  const [rates, setRates] = useState<RateItem[]>(SEED_RATES);
+  const [rates] = useState<RateItem[]>(SEED_RATES);
   const [language, setLanguage] = useState<"hi" | "en" | "mr" | "te">("hi");
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Load persistent state from localStorage on mount
+  // BroadcastChannel ref for cross-tab real-time sync
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  // Flag: true while we're applying a received broadcast (prevent re-broadcasting)
+  const isSyncingRef = useRef(false);
+
+  // ── Load from localStorage on mount ──────────────────────────────────────
   useEffect(() => {
     try {
       const savedLots = localStorage.getItem("kc_lots");
@@ -362,13 +375,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (savedAudit) setAuditLogs(JSON.parse(savedAudit));
 
       const savedLang = localStorage.getItem("kc_lang");
-      if (savedLang) setLanguage(savedLang as any);
+      if (savedLang) setLanguage(savedLang as "hi" | "en" | "mr" | "te");
     } catch (e) {
       console.warn("Could not read localStorage:", e);
     }
   }, []);
 
-  // Save changes to localStorage
+  // ── Persist changes to localStorage ──────────────────────────────────────
   useEffect(() => {
     try {
       localStorage.setItem("kc_lots", JSON.stringify(lots));
@@ -382,6 +395,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lots, floorStock, loads, reconciliations, auditLogs, language]);
 
+  // ── BroadcastChannel: cross-tab real-time sync ────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) return;
+
+    const channel = new BroadcastChannel("kc_realtime_v2");
+    channelRef.current = channel;
+
+    channel.onmessage = (event) => {
+      if (event.data?.type !== "STATE_SYNC") return;
+      const payload: SyncPayload = event.data.payload;
+
+      // Prevent this tab from re-broadcasting what it just received
+      isSyncingRef.current = true;
+
+      if (payload.lots !== undefined) setLots(payload.lots);
+      if (payload.floorStock !== undefined) setFloorStock(payload.floorStock);
+      if (payload.loads !== undefined) setLoads(payload.loads);
+      if (payload.reconciliations !== undefined) setReconciliations(payload.reconciliations);
+      if (payload.auditLogs !== undefined) setAuditLogs(payload.auditLogs);
+
+      // Save to localStorage immediately (without waiting for useEffect)
+      try {
+        if (payload.lots) localStorage.setItem("kc_lots", JSON.stringify(payload.lots));
+        if (payload.floorStock) localStorage.setItem("kc_floor_stock", JSON.stringify(payload.floorStock));
+        if (payload.loads) localStorage.setItem("kc_loads", JSON.stringify(payload.loads));
+        if (payload.reconciliations) localStorage.setItem("kc_reconciliations", JSON.stringify(payload.reconciliations));
+        if (payload.auditLogs) localStorage.setItem("kc_audit_logs", JSON.stringify(payload.auditLogs));
+      } catch (e) { /* silent */ }
+
+      // Release the sync flag after React processes the batch
+      setTimeout(() => { isSyncingRef.current = false; }, 80);
+    };
+
+    return () => {
+      channel.close();
+      channelRef.current = null;
+    };
+  }, []);
+
+  // ── Broadcast helper — sends new state to all other open tabs ─────────────
+  const broadcast = (newState: Partial<SyncPayload>) => {
+    if (isSyncingRef.current || !channelRef.current) return;
+    channelRef.current.postMessage({
+      type: "STATE_SYNC",
+      payload: {
+        lots: newState.lots ?? lots,
+        floorStock: newState.floorStock ?? floorStock,
+        loads: newState.loads ?? loads,
+        reconciliations: newState.reconciliations ?? reconciliations,
+        auditLogs: newState.auditLogs ?? auditLogs,
+      } satisfies SyncPayload,
+    });
+  };
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = (msg: string) => {
     setNotification(msg);
     setTimeout(() => {
@@ -389,6 +457,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 4500);
   };
 
+  // ── Text-to-Speech ────────────────────────────────────────────────────────
   const speak = (text: string) => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -399,10 +468,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // ── addLot ────────────────────────────────────────────────────────────────
   const addLot = (data: Omit<ScrapLot, "id" | "timestamp" | "hash">): ScrapLot => {
     const randomId = "LOT-NGP-" + Math.floor(10000 + Math.random() * 90000);
-    const fakeHash = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    
+    const fakeHash = Array.from({ length: 64 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join("");
+
     const newLot: ScrapLot = {
       ...data,
       id: randomId,
@@ -411,9 +483,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       buyerName: data.buyerName || "Wadi Scrap Aggregators",
       buyerReg: data.buyerReg || "CPCB: MH/EPR/A/2024/00522",
     };
-
-    const updatedLots = [newLot, ...lots];
-    setLots(updatedLots);
 
     const logEntry: AuditLogItem = {
       id: "AUD-" + Date.now().toString().slice(-4),
@@ -424,27 +493,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `New scrap lot ${newLot.id} created: ${newLot.weight_kg} kg ${newLot.material}. Forwarded to Aggregators.`,
       hash: newLot.hash.slice(0, 16) + "...",
     };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+
+    const updatedLots = [newLot, ...lots];
+    const updatedAuditLogs = [logEntry, ...auditLogs];
+
+    setLots(updatedLots);
+    setAuditLogs(updatedAuditLogs);
+
+    // ← Broadcast to all other open tabs (aggregator, admin, etc.)
+    broadcast({ lots: updatedLots, auditLogs: updatedAuditLogs });
 
     showToast(`✅ नया लॉट ${newLot.id} दर्ज हुआ! एग्रीगेटर इनबाउंड में रियल-टाइम दिखाई देगा।`);
     return newLot;
   };
 
+  // ── sendQuote ─────────────────────────────────────────────────────────────
   const sendQuote = (lotId: string, customRate?: number) => {
-    setLots((prev) =>
-      prev.map((lot) => {
-        if (lot.id === lotId) {
-          const updatedRate = customRate || lot.ratePerKg;
-          return {
-            ...lot,
-            ratePerKg: updatedRate,
-            totalPayout: Math.round(lot.weight_kg * updatedRate),
-            status: "QUOTE_SENT",
-          };
-        }
-        return lot;
-      })
-    );
+    const updatedLots = lots.map((lot) => {
+      if (lot.id !== lotId) return lot;
+      const updatedRate = customRate || lot.ratePerKg;
+      return { ...lot, ratePerKg: updatedRate, totalPayout: Math.round(lot.weight_kg * updatedRate), status: "QUOTE_SENT" as const };
+    });
 
     const logEntry: AuditLogItem = {
       id: "AUD-" + Date.now().toString().slice(-4),
@@ -455,13 +524,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `Dispatched formal offer for lot ${lotId} with verified benchmark pricing.`,
       hash: "0x" + Math.random().toString(16).slice(2, 10),
     };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+    const updatedAuditLogs = [logEntry, ...auditLogs];
+
+    setLots(updatedLots);
+    setAuditLogs(updatedAuditLogs);
+    broadcast({ lots: updatedLots, auditLogs: updatedAuditLogs });
     showToast(`✅ लॉट ${lotId} के लिए ऑफर भेज दिया गया! कबाड़ी को कोटेशन मिल चुका है।`);
   };
 
+  // ── acceptQuote ───────────────────────────────────────────────────────────
   const acceptQuote = (lotId: string) => {
-    setLots((prev) =>
-      prev.map((lot) => (lot.id === lotId ? { ...lot, status: "OFFER_ACCEPTED" } : lot))
+    const updatedLots = lots.map((lot) =>
+      lot.id === lotId ? { ...lot, status: "OFFER_ACCEPTED" as const } : lot
     );
 
     const logEntry: AuditLogItem = {
@@ -473,24 +547,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `Collector accepted aggregator's offer for lot ${lotId}. Ready for physical handover.`,
       hash: "0x" + Math.random().toString(16).slice(2, 10),
     };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+    const updatedAuditLogs = [logEntry, ...auditLogs];
+
+    setLots(updatedLots);
+    setAuditLogs(updatedAuditLogs);
+    broadcast({ lots: updatedLots, auditLogs: updatedAuditLogs });
     showToast(`🤝 ऑफर स्वीकार किया गया! हैंडओवर QR कोड तैयार है।`);
   };
 
+  // ── completeHandover ──────────────────────────────────────────────────────
   const completeHandover = (lotId: string) => {
     let completedLot: ScrapLot | undefined;
-    setLots((prev) =>
-      prev.map((lot) => {
-        if (lot.id === lotId) {
-          completedLot = { ...lot, status: "HANDED_OVER" };
-          return completedLot;
-        }
-        return lot;
-      })
-    );
+    const updatedLots = lots.map((lot) => {
+      if (lot.id === lotId) {
+        completedLot = { ...lot, status: "HANDED_OVER" as const };
+        return completedLot;
+      }
+      return lot;
+    });
+
+    let updatedFloorStock = floorStock;
+    let updatedAuditLogs = auditLogs;
 
     if (completedLot) {
-      // Add to floor stock
       const newStock: FloorStockItem = {
         id: "STK-" + Math.floor(100 + Math.random() * 900),
         lotId: completedLot.id,
@@ -500,7 +579,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         value: completedLot.totalPayout,
         status: "READY_TO_BUNDLE",
       };
-      setFloorStock((prev) => [newStock, ...prev]);
+      updatedFloorStock = [newStock, ...floorStock];
 
       const logEntry: AuditLogItem = {
         id: "AUD-" + Date.now().toString().slice(-4),
@@ -511,11 +590,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         details: `Dual QR handshake confirmed for ${completedLot.id}. ₹${completedLot.totalPayout} disbursed. Added to floor stock.`,
         hash: completedLot.hash.slice(0, 16) + "...",
       };
-      setAuditLogs((prev) => [logEntry, ...prev]);
-      showToast(`📦 हैंडओवर पूर्ण! भुगतान दर्ज हो चुका है और सामग्री एग्रीगेटर फ्लोर स्टॉक में जुड़ गई।`);
+      updatedAuditLogs = [logEntry, ...auditLogs];
     }
+
+    setLots(updatedLots);
+    setFloorStock(updatedFloorStock);
+    setAuditLogs(updatedAuditLogs);
+    broadcast({ lots: updatedLots, floorStock: updatedFloorStock, auditLogs: updatedAuditLogs });
+    showToast(`📦 हैंडओवर पूर्ण! भुगतान दर्ज हो चुका है और सामग्री एग्रीगेटर फ्लोर स्टॉक में जुड़ गई।`);
   };
 
+  // ── bundleFloorStock ──────────────────────────────────────────────────────
   const bundleFloorStock = (stockIds: string[], destination: string): BulkLoad => {
     const selectedItems = floorStock.filter((s) => stockIds.includes(s.id));
     const totalWeight = Number(selectedItems.reduce((acc, curr) => acc + curr.weight_kg, 0).toFixed(1));
@@ -534,10 +619,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       lotIds: selectedItems.map((s) => s.id),
     };
 
-    setLoads((prev) => [newLoad, ...prev]);
-    // Remove bundled items from floor stock
-    setFloorStock((prev) => prev.filter((s) => !stockIds.includes(s.id)));
-
     const logEntry: AuditLogItem = {
       id: "AUD-" + Date.now().toString().slice(-4),
       timestamp: "Just now",
@@ -547,11 +628,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `Industrial Load ${newLoad.loadId} created with ${totalWeight} kg. Dispatched with SHA-256 seal.`,
       hash: newLoad.hash.slice(0, 16) + "...",
     };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+
+    const updatedLoads = [newLoad, ...loads];
+    const updatedFloorStock = floorStock.filter((s) => !stockIds.includes(s.id));
+    const updatedAuditLogs = [logEntry, ...auditLogs];
+
+    setLoads(updatedLoads);
+    setFloorStock(updatedFloorStock);
+    setAuditLogs(updatedAuditLogs);
+    broadcast({ loads: updatedLoads, floorStock: updatedFloorStock, auditLogs: updatedAuditLogs });
     showToast(`🚚 औद्योगिक बैच ${newLoad.loadId} (${totalWeight} kg) तैयार व रिसाइक्लर को प्रेषित!`);
     return newLoad;
   };
 
+  // ── reconcileLoad ─────────────────────────────────────────────────────────
   const reconcileLoad = (
     loadId: string,
     receivedWeight: number,
@@ -579,12 +669,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: Math.abs(diff) <= declaredWeight * 0.05 ? "VERIFIED" : "DISPUTED",
     };
 
-    setReconciliations((prev) => [newEpr, ...prev]);
-    // Mark load as reconciled
-    setLoads((prev) =>
-      prev.map((l) => (l.loadId === loadId ? { ...l, status: "RECONCILED" } : l))
-    );
-
+    const updatedLoads = loads.map((l) => (l.loadId === loadId ? { ...l, status: "RECONCILED" as const } : l));
     const logEntry: AuditLogItem = {
       id: "AUD-" + Date.now().toString().slice(-4),
       timestamp: "Just now",
@@ -594,36 +679,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       details: `Weighbridge verified: ${receivedWeight} kg (Variance: ${diff} kg). Certificate ${certNumber} minted.`,
       hash: newEpr.batchHash.slice(0, 16) + "...",
     };
-    setAuditLogs((prev) => [logEntry, ...prev]);
+
+    const updatedReconciliations = [newEpr, ...reconciliations];
+    const updatedAuditLogs = [logEntry, ...auditLogs];
+
+    setReconciliations(updatedReconciliations);
+    setLoads(updatedLoads);
+    setAuditLogs(updatedAuditLogs);
+    broadcast({ reconciliations: updatedReconciliations, loads: updatedLoads, auditLogs: updatedAuditLogs });
     showToast(`📜 वैधानिक EPR प्रमाणपत्र ${certNumber} जारी किया गया! ऑडिट लेजर अपडेट हुआ।`);
     return newEpr;
   };
 
+  // ── resetAllData ──────────────────────────────────────────────────────────
   const resetAllData = () => {
+    const payload: SyncPayload = {
+      lots: SEED_LOTS,
+      floorStock: SEED_FLOOR_STOCK,
+      loads: SEED_LOADS,
+      reconciliations: SEED_RECONCILIATIONS,
+      auditLogs: SEED_AUDIT_LOGS,
+    };
+
     setLots(SEED_LOTS);
     setFloorStock(SEED_FLOOR_STOCK);
     setLoads(SEED_LOADS);
     setReconciliations(SEED_RECONCILIATIONS);
     setAuditLogs(SEED_AUDIT_LOGS);
-    setRates(SEED_RATES);
     setLanguage("hi");
     setIsOnline(true);
 
     try {
-      localStorage.removeItem("kc_lots");
-      localStorage.removeItem("kc_floor_stock");
-      localStorage.removeItem("kc_loads");
-      localStorage.removeItem("kc_reconciliations");
-      localStorage.removeItem("kc_audit_logs");
-      localStorage.removeItem("kc_lang");
-    } catch (e) {
-      console.warn("Storage reset error", e);
+      localStorage.setItem("kc_lots", JSON.stringify(SEED_LOTS));
+      localStorage.setItem("kc_floor_stock", JSON.stringify(SEED_FLOOR_STOCK));
+      localStorage.setItem("kc_loads", JSON.stringify(SEED_LOADS));
+      localStorage.setItem("kc_reconciliations", JSON.stringify(SEED_RECONCILIATIONS));
+      localStorage.setItem("kc_audit_logs", JSON.stringify(SEED_AUDIT_LOGS));
+    } catch (e) { /* silent */ }
+
+    // Broadcast the reset to all other tabs
+    if (channelRef.current) {
+      channelRef.current.postMessage({ type: "STATE_SYNC", payload });
     }
 
     setRefreshKey((k) => k + 1);
     showToast("🔄 सारा डेटा आधिकारिक बेंचमार्क (Default Dataset) पर रीसेट कर दिया गया है!");
   };
 
+  // ── refreshData ───────────────────────────────────────────────────────────
   const refreshData = () => {
     setRefreshKey((k) => k + 1);
     showToast("⚡ डेटा नवीनतम स्थिति से रिफ्रेश हो गया!");

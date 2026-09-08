@@ -54,11 +54,8 @@ export default function CollectorPWA() {
   const [audioSuccessMsg, setAudioSuccessMsg] = useState("");
   const recognitionRef = useRef<any>(null);
 
-  // Camera State
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  // Camera State (sample-image mode — no live camera)
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Sample Scrap presets
   const sampleScrapPresets = [
@@ -213,58 +210,14 @@ export default function CollectorPWA() {
     }, 700);
   };
 
-  // Camera Management
-  const startCamera = async () => {
-    try {
-      setIsCameraActive(true);
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
-      }
-    } catch (err) {
-      console.warn("Webcam access unavailable, using sample camera presets:", err);
-    }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
-    setIsCameraActive(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      canvas.width = video.videoWidth || 320;
-      canvas.height = video.videoHeight || 240;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        setCapturedPhotoUrl(dataUrl);
-      }
-    } else {
-      setCapturedPhotoUrl("captured-preset");
-    }
-    stopCamera();
-    setStep(2);
-  };
-
-  // Clean up camera on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
+  // Sample image tiles for each material category
+  const sampleImageTiles = [
+    { category: "PCBs" as const, emoji: "🖥️", label: "Circuit Boards", labelHi: "सर्किट बोर्ड", conf: "96%", color: "bg-emerald-50 border-emerald-200 text-emerald-800", presetName: "Circuit boards (PCBs)" },
+    { category: "Copper" as const, emoji: "🔌", label: "Copper Wire", labelHi: "तांबा तार", conf: "94%", color: "bg-amber-50 border-amber-200 text-amber-800", presetName: "Copper Wires & Cables" },
+    { category: "Batteries" as const, emoji: "🔋", label: "Li-ion Battery", labelHi: "लिथियम बैटरी", conf: "91%", color: "bg-blue-50 border-blue-200 text-blue-800", presetName: "Lithium-ion Batteries" },
+    { category: "Motors" as const, emoji: "⚙️", label: "Electric Motors", labelHi: "इलेक्ट्रिक मोटर", conf: "93%", color: "bg-indigo-50 border-indigo-200 text-indigo-800", presetName: "Electric Motors" },
+    { category: "Aluminium" as const, emoji: "🥫", label: "Aluminium Scrap", labelHi: "एल्युमिनियम", conf: "89%", color: "bg-slate-100 border-slate-200 text-slate-700", presetName: "Aluminium Scrap" },
+  ];
 
   // Keypad Weight input
   const handleKeypadPress = (val: string) => {
@@ -591,85 +544,58 @@ export default function CollectorPWA() {
                     </div>
                   </div>
 
-                  {/* Camera / Visual Classification Section */}
+                  {/* AI Camera — Sample Image Selector */}
                   <div className="p-4 bg-ink-50/70 border border-ink-100 rounded-3xl space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Camera className="w-4 h-4 text-ink-700" />
-                        <h4 className="font-extrabold text-xs text-ink-900">कबाड़ की फोटो खींचें (AI Camera)</h4>
+                        <h4 className="font-extrabold text-xs text-ink-900">सामग्री पहचानें (AI Visual Detection)</h4>
                       </div>
-                      <span className="text-[10px] font-mono text-ink-500">Automatic Grade Detection</span>
+                      <span className="text-[10px] font-mono text-ink-500 bg-white border border-ink-100 px-1.5 py-0.5 rounded-md">Sample Mode</span>
                     </div>
 
-                    {isCameraActive ? (
-                      <div className="space-y-2">
-                        <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-ink-200">
-                          <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
-                          <canvas ref={canvasRef} className="hidden" />
-                          <div className="absolute inset-4 border-2 border-dashed border-leaf-500/70 rounded-xl pointer-events-none flex items-center justify-center">
-                            <span className="text-[10px] bg-black/60 text-white px-2 py-0.5 rounded-md font-mono">
-                              कबाड़ को फ्रेम में रखें
-                            </span>
-                          </div>
+                    {capturedPhotoUrl ? (
+                      /* Captured state — show what was selected */
+                      <div className="p-3 bg-leaf-50 border border-leaf-100 rounded-2xl flex items-center gap-3">
+                        <span className="text-2xl">
+                          {sampleImageTiles.find(t => t.category === selectedCategory)?.emoji || "📦"}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-leaf-800">✓ पहचाना गया: {selectedPreset}</p>
+                          <p className="text-[10px] text-leaf-700">AI Confidence: {sampleImageTiles.find(t => t.category === selectedCategory)?.conf || "95%"}</p>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={capturePhoto}
-                            className="flex-1 py-2.5 bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-xs rounded-xl shadow-xs"
-                          >
-                            फोटो लें (Capture)
-                          </button>
-                          <button
-                            onClick={stopCamera}
-                            className="px-3 py-2.5 bg-white border border-ink-100 text-ink-700 font-bold text-xs rounded-xl"
-                          >
-                            रद्द
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => { setCapturedPhotoUrl(null); }}
+                          className="text-[10px] text-ink-500 underline"
+                        >बदलें</button>
                       </div>
                     ) : (
-                      <button
-                        onClick={startCamera}
-                        className="w-full p-4 bg-white border border-dashed border-ink-200 rounded-2xl hover:border-leaf-600 hover:bg-leaf-50/20 transition flex flex-col items-center justify-center space-y-2"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-ink-50 text-leaf-700 flex items-center justify-center">
-                          <Camera className="w-5 h-5" />
+                      /* Tile grid — pick a material */
+                      <div className="space-y-2">
+                        <p className="text-[11px] text-ink-600 font-semibold">
+                          नीचे से अपनी सामग्री चुनें (AI Sample Detection):
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {sampleImageTiles.map((tile) => (
+                            <button
+                              key={tile.category}
+                              onClick={() => {
+                                setSelectedCategory(tile.category);
+                                setSelectedPreset(tile.presetName);
+                                setCapturedPhotoUrl(`sample-${tile.category}`);
+                                setStep(2);
+                              }}
+                              className={`p-3 rounded-2xl border text-left transition-all hover:shadow-sm active:scale-[.97] ${tile.color}`}
+                            >
+                              <div className="text-xl mb-1">{tile.emoji}</div>
+                              <p className="text-[11px] font-bold leading-tight">{tile.labelHi}</p>
+                              <p className="text-[10px] opacity-70 mt-0.5">{tile.label}</p>
+                              <p className="text-[9px] font-mono mt-1 opacity-60">AI: {tile.conf}</p>
+                            </button>
+                          ))}
                         </div>
-                        <div className="text-center">
-                          <p className="text-xs font-bold text-ink-900">कैमरा चालू करें</p>
-                          <p className="text-[10px] text-ink-500">या नीचे दिए गए नमूने से तुरंत चुनें</p>
-                        </div>
-                      </button>
-                    )}
-
-                    {/* Realistic Sample Scrap Presets */}
-                    <div className="pt-2">
-                      <p className="text-[11px] text-ink-600 font-semibold mb-2 text-left">
-                        या त्वरित नमूना सामग्री चुनें:
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {sampleScrapPresets.map((preset) => (
-                          <button
-                            key={preset.name}
-                            onClick={() => {
-                              setSelectedCategory(preset.category as any);
-                              setSelectedPreset(preset.name);
-                              setStep(2);
-                            }}
-                            className={`p-2.5 rounded-2xl border text-xs font-bold text-left transition-all ${
-                              selectedCategory === preset.category
-                                ? "bg-leaf-50 border-leaf-600 text-leaf-700 ring-1 ring-leaf-600"
-                                : "bg-white border-ink-100 text-ink-700 hover:bg-ink-50"
-                            }`}
-                          >
-                            <p>{preset.labelHi}</p>
-                            <span className="text-[9px] text-ink-400 font-mono font-normal">
-                              AI: {preset.conf}
-                            </span>
-                          </button>
-                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
