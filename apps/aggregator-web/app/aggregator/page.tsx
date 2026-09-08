@@ -8,91 +8,64 @@ import {
   Check,
   Plus,
   Zap,
+  ArrowRight,
+  PackageCheck,
+  Truck,
+  Hash,
+  RefreshCw,
+  QrCode,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useApp } from "@/context/AppContext";
 
 export default function AggregatorPortal() {
+  const {
+    lots,
+    floorStock,
+    loads,
+    rates,
+    sendQuote,
+    completeHandover,
+    bundleFloorStock,
+    refreshData,
+  } = useApp();
+
   const [activeTab, setActiveTab] = useState<"inbound" | "stock" | "loads" | "ratecard">("inbound");
+  const [activeQuoteLotId, setActiveQuoteLotId] = useState<string | null>(null);
+  const [customRateInput, setCustomRateInput] = useState<number>(720);
+  const [selectedStockIds, setSelectedStockIds] = useState<string[]>([]);
+  const [destinationPlant, setDestinationPlant] = useState("Vidarbha Metal Recovery Pvt Ltd (MIDC Butibori)");
+  const [selectedLoadQr, setSelectedLoadQr] = useState<any>(null);
 
-  const [inboundListings, setInboundListings] = useState([
-    {
-      id: "LOT-NGP-84741",
-      collector: "Ramesh Kumar (रमेश)",
-      location: "Kalmna - Wadi Belt, 1.2 km away",
-      material: "Circuit Boards (Grade A Mobile PCBs)",
-      weight_kg: 8.0,
-      askingPrice: 5407,
-      status: "PENDING_QUOTE",
-      timestamp: "12 mins ago",
-    },
-    {
-      id: "LOT-NGP-84739",
-      collector: "Sunita Bai (सुनीता)",
-      location: "MIDC Hingna, 2.4 km away",
-      material: "Mobile Boards & Keypads",
-      weight_kg: 3.4,
-      askingPrice: 2450,
-      status: "QUOTE_SENT",
-      timestamp: "35 mins ago",
-    },
-    {
-      id: "LOT-NGP-84732",
-      collector: "Imran Khan (इमरान)",
-      location: "Sitabuldi Market, 3.8 km away",
-      material: "Mixed Copper & Aluminium Cable",
-      weight_kg: 42.0,
-      askingPrice: 19800,
-      status: "PENDING_QUOTE",
-      timestamp: "1 hour ago",
-    },
-  ]);
-
-  const [floorStock, setFloorStock] = useState([
-    { id: 201, grade: "Circuit Boards (Grade A)", weight_kg: 18.4, value: 14168, status: "READY_TO_BUNDLE" },
-    { id: 202, grade: "Copper Extrusion Wire", weight_kg: 22.5, value: 10800, status: "READY_TO_BUNDLE" },
-    { id: 203, grade: "Lithium-ion Battery Packs", weight_kg: 10.0, value: 4200, status: "READY_TO_BUNDLE" },
-  ]);
-
-  const [rates, setRates] = useState([
-    { grade: "Circuit Boards (Mobile PCBs)", price: 720, change: "+3.2%", minKg: 2 },
-    { grade: "Circuit Boards (Computer/Server)", price: 260, change: "+1.5%", minKg: 5 },
-    { grade: "Copper Wires & Strips", price: 480, change: "-0.8%", minKg: 3 },
-    { grade: "Aluminium Castings & Cans", price: 215, change: "+1.1%", minKg: 5 },
-    { grade: "Li-ion Battery Cells", price: 410, change: "+2.0%", minKg: 2 },
-  ]);
-
-  const [loads, setLoads] = useState([
-    {
-      loadId: "BULK-NGP-084",
-      material: "Circuit Boards (Consolidated)",
-      weight: 28.0,
-      destination: "Vidarbha Metal Recovery Pvt Ltd (MIDC Butibori)",
-      status: "IN_TRANSIT",
-      hash: "c8f2b414d9b3a099a4c11b023fec9a796e6d78a9c2df3607ba9f1709403db812",
-    },
-  ]);
-
-  const [activeQuoteLot, setActiveQuoteLot] = useState<string | null>(null);
-
-  const handleSendQuote = (id: string) => {
-    setInboundListings((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: "QUOTE_SENT" } : item))
+  // Toggle selection for bundling
+  const toggleStockSelection = (id: string) => {
+    setSelectedStockIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-    setActiveQuoteLot(null);
   };
 
-  const adjustRate = (idx: number, delta: number) => {
-    setRates((prev) =>
-      prev.map((r, i) => (i === idx ? { ...r, price: Math.max(10, r.price + delta) } : r))
-    );
+  const selectedStockItems = floorStock.filter((s) => selectedStockIds.includes(s.id));
+  const selectedTotalWeight = Number(
+    selectedStockItems.reduce((acc, curr) => acc + curr.weight_kg, 0).toFixed(1)
+  );
+
+  const handleCreateBundle = () => {
+    if (selectedStockIds.length === 0) return;
+    const newLoad = bundleFloorStock(selectedStockIds, destinationPlant);
+    setSelectedStockIds([]);
+    setActiveTab("loads");
+    setSelectedLoadQr(newLoad);
   };
 
   return (
     <div className="min-h-screen bg-white text-ink-900 p-4 sm:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-ink-50/70 border border-ink-100 rounded-3xl shadow-sm">
+        {/* Aggregator Shop Header */}
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-ink-50/70 border border-ink-100 rounded-3xl shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-white ring-1 ring-ink-100 text-ink-700 shadow-2xs">
+            <div className="p-3 rounded-2xl bg-white ring-1 border-ink-100 text-ink-700 shadow-2xs">
               <Store className="w-6 h-6" />
             </div>
             <div>
@@ -101,111 +74,171 @@ export default function AggregatorPortal() {
                   Wadi Scrap Aggregators
                 </h1>
                 <span className="text-[10px] bg-leaf-50 text-leaf-700 ring-1 ring-leaf-100 px-2 py-0.5 rounded-full font-mono font-bold">
-                  REGISTERED AGGREGATOR
+                  CPCB AUTHORISED AGGREGATOR
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
                 Plot 14, Wadi Industrial Area, Nagpur &bull; CPCB Reg:{" "}
-                <span className="text-ink-700 font-mono">MH/EPR/A/2024/00522</span>
+                <span className="font-mono text-ink-700 font-semibold">MH/EPR/A/2024/00522</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-2 bg-white border border-ink-100 rounded-2xl text-xs text-right shadow-2xs">
-              <p className="text-ink-500 text-[10px] uppercase font-semibold">Consolidated Stock on Floor</p>
-              <p className="text-lg font-black text-ink-900">50.9 kg</p>
-            </div>
-            <div className="px-4 py-2 bg-leaf-50 ring-1 ring-leaf-100 text-leaf-700 rounded-2xl text-xs font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Plant Gate Ready</span>
+            <button
+              onClick={refreshData}
+              className="px-3.5 py-2 bg-white hover:bg-ink-50 text-ink-700 text-xs font-semibold rounded-2xl border border-ink-100 flex items-center gap-2 transition-colors shadow-2xs"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-leaf-600" />
+              <span>Refresh Queue</span>
+            </button>
+            <div className="px-3 py-1.5 bg-leaf-50 border border-leaf-100 rounded-2xl text-xs text-leaf-700 font-mono font-bold">
+              Floor Stock: {floorStock.reduce((a, b) => a + b.weight_kg, 0).toFixed(1)} kg
             </div>
           </div>
         </header>
 
+        {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-ink-100 pb-2 overflow-x-auto">
           {[
-            { id: "inbound", label: "Buy from Collectors", count: inboundListings.filter((i) => i.status === "PENDING_QUOTE").length },
-            { id: "stock", label: "My Stock on Floor", count: "50.9 kg" },
-            { id: "loads", label: "Bulk Loads for Recyclers", count: loads.length },
-            { id: "ratecard", label: "My Rate Card & Rules" },
+            { id: "inbound", label: `Inbound Scrap Queue (${lots.filter(l => l.status !== "HANDED_OVER").length})` },
+            { id: "stock", label: `Aggregator Floor Stock (${floorStock.length} items)` },
+            { id: "loads", label: `Industrial Bulk Batches (${loads.length})` },
+            { id: "ratecard", label: "Rate Card & Benchmark Matrix" },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap ${
+              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-2xl transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-ink-900 text-white shadow-sm"
+                  ? "bg-ink-900 text-white shadow-xs"
                   : "text-ink-600 hover:text-ink-900 hover:bg-ink-50"
               }`}
             >
-              <span>{tab.label}</span>
-              {tab.count !== undefined && (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${activeTab === tab.id ? "bg-white text-ink-900 font-bold" : "bg-ink-100 text-ink-700"}`}>
-                  {tab.count}
-                </span>
-              )}
+              {tab.label}
             </button>
           ))}
         </div>
 
+        {/* TAB 1: INBOUND QUEUE (REAL-TIME FROM COLLECTORS) */}
         {activeTab === "inbound" && (
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-ink-900">Nearby Collector Listings Awaiting Offer</h2>
+                <h3 className="font-bold text-base text-ink-900">कबाड़ी आवक सूची (Live Inbound Lots from Collectors)</h3>
                 <p className="text-xs text-ink-500">
-                  Small doorstep lots (3–8 kg) broadcast by informal collectors within a 5 km radius
+                  कलेक्टर ऐप से बनाया गया कोई भी लॉट यहाँ तुरंत दिखाई देता है।
                 </p>
               </div>
+              <span className="text-xs font-mono text-leaf-700 font-bold bg-leaf-50 px-2.5 py-1 rounded-xl border border-leaf-100">
+                Real-Time PostGIS Matching Active
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {inboundListings.map((lot) => (
+            <div className="grid grid-cols-1 gap-3">
+              {lots.map((item) => (
                 <div
-                  key={lot.id}
-                  className="bg-white border border-ink-100 rounded-3xl p-5 shadow-2xs space-y-4 flex flex-col justify-between hover:border-leaf-600 transition-all"
+                  key={item.id}
+                  className="p-5 bg-white border border-ink-100 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-leaf-600 transition shadow-2xs"
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-leaf-700 bg-leaf-50 ring-1 ring-leaf-100 px-2 py-0.5 rounded-full font-bold">
-                        {lot.id}
+                  <div className="space-y-1.5 max-w-xl">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-ink-700 bg-ink-50 px-2 py-0.5 rounded-lg border border-ink-100">
+                        {item.id}
                       </span>
-                      <span className="text-[10px] text-ink-400">{lot.timestamp}</span>
+                      <span className="text-xs font-bold text-ink-900">{item.collector}</span>
+                      <span className="text-[11px] text-ink-500">&bull; {item.location}</span>
+                      <span className="text-[10px] text-ink-400 font-mono">({item.timestamp})</span>
                     </div>
 
-                    <div>
-                      <h3 className="font-bold text-sm text-ink-900">{lot.material}</h3>
-                      <p className="text-xs text-ink-700 font-medium">{lot.collector}</p>
-                      <p className="text-[11px] text-ink-400">{lot.location}</p>
+                    <h4 className="font-extrabold text-sm sm:text-base text-ink-900">{item.material}</h4>
+
+                    <div className="flex items-center gap-3 text-xs text-ink-600">
+                      <span>वजन: <strong className="text-ink-900 font-mono">{item.weight_kg} kg</strong></span>
+                      <span>दर: <strong className="text-ink-900 font-mono">₹{item.ratePerKg}/kg</strong></span>
+                      <span>कुल राशि: <strong className="text-leaf-600 font-mono font-bold">₹{item.totalPayout}</strong></span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-ink-100">
-                      <div>
-                        <span className="text-[10px] text-ink-400 uppercase font-semibold">Weight</span>
-                        <p className="text-base font-extrabold text-ink-900">{lot.weight_kg} kg</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-ink-400 uppercase font-semibold">Benchmark Payout</span>
-                        <p className="text-base font-extrabold text-leaf-600 font-mono">₹{lot.askingPrice}</p>
-                      </div>
-                    </div>
+                    {item.audioTranscript && (
+                      <p className="text-[11px] text-ink-500 font-mono bg-ink-50 px-2 py-0.5 rounded-md inline-block">
+                        🎙️ Voice Log: &quot;{item.audioTranscript}&quot;
+                      </p>
+                    )}
                   </div>
 
-                  <div>
-                    {lot.status === "QUOTE_SENT" ? (
-                      <div className="w-full py-2 bg-leaf-50 text-leaf-700 text-xs font-semibold rounded-2xl ring-1 ring-leaf-100 text-center flex items-center justify-center gap-1.5">
-                        <Check className="w-4 h-4" />
-                        <span>Quote Submitted &bull; Waiting Collector QR</span>
+                  {/* Actions & Status */}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span
+                      className={`text-xs px-2.5 py-1 rounded-xl font-bold uppercase ${
+                        item.status === "OFFER_ACCEPTED"
+                          ? "bg-leaf-50 text-leaf-700 border border-leaf-100"
+                          : item.status === "QUOTE_SENT"
+                          ? "bg-blue-50 text-blue-700 border border-blue-100"
+                          : item.status === "HANDED_OVER"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-100"
+                      }`}
+                    >
+                      {item.status.replace("_", " ")}
+                    </span>
+
+                    {item.status === "PENDING_QUOTE" && (
+                      <div className="flex items-center gap-2">
+                        {activeQuoteLotId === item.id ? (
+                          <div className="flex items-center gap-2 bg-ink-50 p-1.5 rounded-2xl border border-ink-200">
+                            <span className="text-xs font-bold text-ink-600">₹</span>
+                            <input
+                              type="number"
+                              value={customRateInput}
+                              onChange={(e) => setCustomRateInput(Number(e.target.value))}
+                              className="w-16 bg-white border border-ink-200 rounded-lg px-2 py-1 text-xs font-mono font-bold"
+                            />
+                            <button
+                              onClick={() => {
+                                sendQuote(item.id, customRateInput);
+                                setActiveQuoteLotId(null);
+                              }}
+                              className="px-3 py-1 bg-leaf-600 hover:bg-leaf-700 text-white rounded-xl text-xs font-bold transition"
+                            >
+                              भेजें
+                            </button>
+                            <button
+                              onClick={() => setActiveQuoteLotId(null)}
+                              className="px-2 py-1 text-xs text-ink-500"
+                            >
+                              रद्द
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setActiveQuoteLotId(item.id);
+                              setCustomRateInput(item.ratePerKg);
+                            }}
+                            className="px-3.5 py-2 bg-leaf-600 hover:bg-leaf-700 text-white font-semibold text-xs rounded-2xl shadow-xs transition flex items-center gap-1"
+                          >
+                            <span>ऑफर / कोटेशन भेजें</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                    ) : (
+                    )}
+
+                    {item.status === "OFFER_ACCEPTED" && (
                       <button
-                        onClick={() => handleSendQuote(lot.id)}
-                        className="w-full py-2.5 bg-leaf-600 hover:bg-leaf-700 text-white font-semibold text-xs rounded-2xl shadow-sm transition-colors flex items-center justify-center gap-1.5 active:scale-[.98]"
+                        onClick={() => completeHandover(item.id)}
+                        className="px-3.5 py-2 bg-leaf-600 hover:bg-leaf-700 text-white font-semibold text-xs rounded-2xl shadow-xs transition flex items-center gap-1.5"
                       >
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>Send Offer (₹{lot.askingPrice})</span>
+                        <PackageCheck className="w-4 h-4" />
+                        <span>माल हैंडओवर स्वीकारें (Scan QR)</span>
                       </button>
+                    )}
+
+                    {item.status === "HANDED_OVER" && (
+                      <span className="text-xs text-leaf-700 font-semibold flex items-center gap-1 bg-leaf-50 px-2 py-1 rounded-xl">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        स्टॉक में मौजूद
+                      </span>
                     )}
                   </div>
                 </div>
@@ -214,78 +247,149 @@ export default function AggregatorPortal() {
           </div>
         )}
 
+        {/* TAB 2: AGGREGATOR FLOOR STOCK & BUNDLING */}
         {activeTab === "stock" && (
-          <div className="bg-white border border-ink-100 rounded-3xl p-6 shadow-sm space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between pb-4 border-b border-ink-100">
-              <div>
-                <h2 className="text-lg font-bold text-ink-900">Aggregated Floor Inventory</h2>
-                <p className="text-xs text-ink-500">
-                  Consolidated lots collected from door-to-door informal pickers, ready to be bundled into bulk lots
-                </p>
+          <div className="space-y-4 animate-fade-in">
+            <div className="p-6 bg-ink-50/70 border border-ink-100 rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-extrabold text-base text-ink-900">
+                    फ्लोर स्टॉक समूहन (Industrial Lot Consolidation)
+                  </h3>
+                  <p className="text-xs text-ink-500">
+                    कम से कम 25 kg का बैच बनाएं ताकि औपचारिक रिसाइक्लर/स्मेल्टर को भेजा जा सके।
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[10px] text-ink-500 font-bold uppercase">चयनित कुल वजन</p>
+                    <p className="text-xl font-mono font-extrabold text-leaf-600">
+                      {selectedTotalWeight} <span className="text-xs font-normal">kg</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCreateBundle}
+                    disabled={selectedStockIds.length === 0}
+                    className="px-4 py-2.5 bg-leaf-600 hover:bg-leaf-700 disabled:opacity-40 text-white font-bold text-xs rounded-2xl shadow-sm transition flex items-center gap-2"
+                  >
+                    <Truck className="w-4 h-4" />
+                    <span>औद्योगिक बैच बनाएं व प्रेषित करें</span>
+                  </button>
+                </div>
               </div>
-              <button className="px-3.5 py-2 bg-leaf-600 hover:bg-leaf-700 text-white text-xs font-semibold rounded-2xl shadow-sm transition-all flex items-center gap-1.5 active:scale-[.98]">
-                <Plus className="w-4 h-4" />
-                <span>Build New Bulk Load (25+ kg)</span>
-              </button>
+
+              {/* Destination selector */}
+              <div className="pt-2 border-t border-ink-100 flex items-center gap-3 text-xs">
+                <span className="font-semibold text-ink-700">गंतव्य रिसाइक्लर (Destination):</span>
+                <select
+                  value={destinationPlant}
+                  onChange={(e) => setDestinationPlant(e.target.value)}
+                  className="bg-white border border-ink-200 rounded-xl px-2.5 py-1 text-xs font-bold text-ink-800"
+                >
+                  <option value="Vidarbha Metal Recovery Pvt Ltd (MIDC Butibori)">
+                    Vidarbha Metal Recovery Pvt Ltd (MIDC Butibori) - CPCB Auth
+                  </option>
+                  <option value="Nagpur Critical Minerals Smelter (Kalmna)">
+                    Nagpur Critical Minerals Smelter (Kalmna)
+                  </option>
+                </select>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {floorStock.map((stock) => (
-                <div key={stock.id} className="p-4 bg-ink-50 rounded-2xl border border-ink-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-ink-500">LOT #{stock.id}</span>
-                    <span className="text-[10px] text-leaf-700 font-bold bg-leaf-50 ring-1 ring-leaf-100 px-2 py-0.5 rounded-full">READY</span>
+            {/* Stock Items Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {floorStock.map((stock) => {
+                const isSelected = selectedStockIds.includes(stock.id);
+                return (
+                  <div
+                    key={stock.id}
+                    onClick={() => toggleStockSelection(stock.id)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-leaf-50 border-leaf-600 ring-2 ring-leaf-600/30 shadow-xs"
+                        : "bg-white border-ink-100 hover:border-ink-200 hover:bg-ink-50/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[10px] font-bold text-ink-600 bg-ink-50 px-2 py-0.5 rounded-md">
+                        {stock.id}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded accent-leaf-600 w-4 h-4 cursor-pointer"
+                      />
+                    </div>
+                    <h4 className="font-bold text-sm text-ink-900">{stock.grade}</h4>
+                    <p className="font-mono text-lg font-black text-leaf-700 mt-1">
+                      {stock.weight_kg} kg
+                    </p>
+                    <p className="text-xs text-ink-500 font-mono">मूल्य: ₹{stock.value.toLocaleString("en-IN")}</p>
                   </div>
-                  <h4 className="font-bold text-sm text-ink-900">{stock.grade}</h4>
-                  <div className="flex items-center justify-between pt-2 border-t border-ink-100">
-                    <span className="text-base font-extrabold text-ink-900">{stock.weight_kg} kg</span>
-                    <span className="font-mono text-xs text-leaf-700 font-bold">₹{stock.value}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
+        {/* TAB 3: INDUSTRIAL LOADS & QR MINTING */}
         {activeTab === "loads" && (
-          <div className="bg-white border border-ink-100 rounded-3xl p-6 shadow-sm space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between pb-4 border-b border-ink-100">
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-ink-900">Dispatched Bulk Loads (Plant Gate Minimum 25 kg)</h2>
+                <h3 className="font-extrabold text-base text-ink-900">
+                  प्रेषित औद्योगिक बैच (Dispatched Industrial Batches)
+                </h3>
                 <p className="text-xs text-ink-500">
-                  Secured with SHA-256 chain-of-custody hash for formal smelter inward verification
+                  प्रत्येक बैच SHA-256 डिजिटल सील और QR कोड से सुरक्षित है।
                 </p>
               </div>
+              <span className="text-xs font-mono text-leaf-700 bg-leaf-50 px-2.5 py-1 rounded-xl border border-leaf-100 font-bold">
+                Tamper-Proof Custody Chain
+              </span>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3">
               {loads.map((load) => (
                 <div
                   key={load.loadId}
-                  className="p-5 bg-white border border-ink-100 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs"
+                  className="p-5 bg-white border border-ink-100 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-ink-900">{load.loadId}</span>
-                      <span className="text-[10px] font-mono bg-leaf-50 text-leaf-700 ring-1 ring-leaf-100 px-2 py-0.5 rounded-full font-bold">
-                        {load.status}
+                      <span className="font-mono text-xs font-extrabold text-leaf-700 bg-leaf-50 px-2 py-0.5 rounded-lg border border-leaf-100">
+                        {load.loadId}
                       </span>
+                      <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-bold uppercase">
+                        {load.status.replace("_", " ")}
+                      </span>
+                      <span className="text-xs text-ink-500 font-mono">{load.dispatchedAt}</span>
                     </div>
-                    <p className="text-xs text-ink-700">{load.material} &bull; <strong className="text-ink-900">{load.weight} kg</strong></p>
-                    <p className="text-[11px] text-ink-500">Destination: {load.destination}</p>
-                    <p className="text-[10px] font-mono text-ink-400 truncate max-w-md">Hash: {load.hash}</p>
+
+                    <h4 className="font-bold text-base text-ink-900">{load.material}</h4>
+                    <p className="text-xs text-ink-600">गंतव्य: <strong>{load.destination}</strong></p>
+
+                    <div className="flex items-center gap-2 text-xs font-mono text-ink-500 pt-1">
+                      <Hash className="w-3.5 h-3.5 text-leaf-600" />
+                      <span className="truncate max-w-sm sm:max-w-md">{load.hash}</span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-xl ring-1 ring-ink-100 shadow-2xs">
-                      <QRCodeSVG value={`https://mines.gov.in/verify?hash=${load.hash}`} size={60} />
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-[10px] text-ink-400 font-bold uppercase">वजन</p>
+                      <p className="text-xl font-mono font-black text-ink-900">{load.weight} kg</p>
                     </div>
-                    <Link
-                      href="/smelter"
-                      className="px-3.5 py-2 bg-white hover:bg-ink-50 text-ink-700 text-xs font-semibold rounded-2xl border border-ink-100 transition-colors"
+
+                    <button
+                      onClick={() => setSelectedLoadQr(load)}
+                      className="p-3 bg-ink-50 hover:bg-leaf-50 text-ink-700 hover:text-leaf-700 rounded-2xl border border-ink-100 transition shadow-2xs"
+                      title="Show Industrial Batch QR Code"
                     >
-                      Verify on Recycler Tab &rarr;
-                    </Link>
+                      <QrCode className="w-6 h-6" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -293,47 +397,83 @@ export default function AggregatorPortal() {
           </div>
         )}
 
+        {/* TAB 4: BENCHMARK RATE CARD */}
         {activeTab === "ratecard" && (
-          <div className="bg-white border border-ink-100 rounded-3xl p-6 shadow-sm space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between pb-4 border-b border-ink-100">
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-ink-900">Aggregator Benchmark Rate Card</h2>
+                <h3 className="font-extrabold text-base text-ink-900">
+                  दैनिक आधिकारिक स्क्रैप दरें (Daily Benchmark Scrap Rates)
+                </h3>
                 <p className="text-xs text-ink-500">
-                  Published daily rates offered to door-to-door pickers across Nagpur clusters
+                  खान मंत्रालय और सीपीसीबी द्वारा प्रमाणित थोक दरें (Nagpur District Benchmark)
                 </p>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {rates.map((rate, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 bg-white border border-ink-100 rounded-2xl flex items-center justify-between gap-4 shadow-2xs"
-                >
-                  <div>
-                    <h4 className="font-bold text-sm text-ink-900">{rate.grade}</h4>
-                    <p className="text-xs text-ink-500 mt-0.5">Min Acceptance: {rate.minKg} kg &bull; Daily Trend: <span className="text-leaf-600 font-bold">{rate.change}</span></p>
-                  </div>
+            <div className="overflow-x-auto border border-ink-100 rounded-2xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-ink-50 text-ink-700 font-bold uppercase text-[10px] border-b border-ink-100">
+                  <tr>
+                    <th className="p-3">सामग्री (Material Grade)</th>
+                    <th className="p-3">श्रेणी</th>
+                    <th className="p-3">वर्तमान दर (₹/kg)</th>
+                    <th className="p-3">दैनिक बदलाव</th>
+                    <th className="p-3">न्यूनतम मात्रा</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {rates.map((r, i) => (
+                    <tr key={i} className="hover:bg-ink-50/40 transition">
+                      <td className="p-3 font-bold text-ink-900">{r.nameEn} ({r.nameHi})</td>
+                      <td className="p-3 font-mono text-ink-600">{r.category}</td>
+                      <td className="p-3 font-mono font-extrabold text-leaf-700 text-sm">₹{r.price}/kg</td>
+                      <td className={`p-3 font-mono font-bold ${r.up ? "text-leaf-600" : "text-clay-700"}`}>
+                        {r.change}
+                      </td>
+                      <td className="p-3 font-mono text-ink-600">{r.minKg} kg</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => adjustRate(idx, -10)}
-                      className="w-8 h-8 rounded-xl bg-ink-50 hover:bg-ink-100 text-ink-900 font-bold text-sm flex items-center justify-center transition-colors border border-ink-100"
-                    >
-                      -
-                    </button>
-                    <span className="font-mono text-base font-extrabold text-ink-900 w-20 text-center">
-                      ₹{rate.price}<span className="text-xs text-ink-400 font-normal">/kg</span>
-                    </span>
-                    <button
-                      onClick={() => adjustRate(idx, 10)}
-                      className="w-8 h-8 rounded-xl bg-ink-50 hover:bg-ink-100 text-ink-900 font-bold text-sm flex items-center justify-center transition-colors border border-ink-100"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
+        {/* Batch QR Modal */}
+        {selectedLoadQr && (
+          <div className="fixed inset-0 z-50 bg-ink-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-ink-100 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+              <div className="flex items-center justify-between pb-2 border-b border-ink-100">
+                <h4 className="font-bold text-sm text-ink-900">औद्योगिक बैच क्यूआर कोड</h4>
+                <button onClick={() => setSelectedLoadQr(null)} className="text-ink-500 hover:text-ink-900">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-white inline-block rounded-2xl shadow-sm border-2 border-leaf-600">
+                <QRCodeSVG
+                  value={`https://mines.gov.in/batch?id=${selectedLoadQr.loadId}&hash=${selectedLoadQr.hash}&weight=${selectedLoadQr.weight}`}
+                  size={170}
+                />
+              </div>
+
+              <div>
+                <p className="font-mono text-xs font-bold text-leaf-700">{selectedLoadQr.loadId}</p>
+                <p className="text-xs font-bold text-ink-900">{selectedLoadQr.material}</p>
+                <p className="font-mono text-sm font-extrabold text-ink-800">{selectedLoadQr.weight} kg</p>
+              </div>
+
+              <div className="p-2.5 bg-ink-50 rounded-xl text-[10px] font-mono text-ink-600 break-all">
+                SHA-256: {selectedLoadQr.hash}
+              </div>
+
+              <button
+                onClick={() => setSelectedLoadQr(null)}
+                className="w-full py-2 bg-ink-900 hover:bg-ink-800 text-white text-xs font-semibold rounded-2xl"
+              >
+                बंद करें
+              </button>
             </div>
           </div>
         )}

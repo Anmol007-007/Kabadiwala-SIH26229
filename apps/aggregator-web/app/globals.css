@@ -106,10 +106,53 @@ body {
 
 .ring-ink-100 { --tw-ring-color: #dfe6e3; }
 .ring-leaf-100 { --tw-ring-color: #d6f0e5; }
+.ring-clay-100 { --tw-ring-color: #fbe0d8; }
 
 .bg-gold-50 { background-color: #fef8ec; }
 .text-gold-700 { color: #8a5a06; }
 .text-gold-600 { color: #b8790a; }
 
 .bg-clay-100 { background-color: #fbe0d8; }
+.bg-clay-700 { background-color: #96331f; }
 .text-clay-700 { color: #96331f; }
+.text-clay-800 { color: #7a2a19; }
+.border-clay-100 { border-color: #fbe0d8; }
+.border-clay-200 { border-color: #f7c4b8; }
+
+.hover\:bg-clay-100:hover { background-color: #fbe0d8; }
+.hover\:text-clay-700:hover { color: #96331f; }
+
+/* Text colours missing from initial set */
+.text-ink-800 { color: #1d2825; }
+.text-leaf-100 { color: #d6f0e5; }
+.text-leaf-50 { color: #eaf8f1; }
+.border-ink-700 { border-color: #2b3a36; }
+.border-ink-800 { border-color: #1d2825; }
+.bg-ink-50\/70 { background-color: rgba(241, 245, 244, 0.7); }
+.border-leaf-600 { border-color: #16805c; }
+.border-leaf-600\/40 { border-color: rgba(22, 128, 92, 0.4); }
+.shadow-leaf-600\/25 { --tw-shadow-color: rgba(22, 128, 92, 0.25); }
+.hover\:border-leaf-600:hover { border-color: #16805c; }
+.hover\:bg-leaf-100:hover { background-color: #d6f0e5; }
+.hover\:bg-leaf-700:hover { background-color: #12674a; }
+.hover\:bg-ink-800:hover { background-color: #1d2825; }
+
+/* Additional leaf shades */
+.text-leaf-800 { color: #0e523b; }
+.bg-leaf-200 { background-color: #b3e6cf; }
+.border-leaf-200 { border-color: #b3e6cf; }
+.hover\:text-leaf-800:hover { color: #0e523b; }
+
+/* Opacity modifiers (Tailwind v4 @theme handles these, but explicit fallbacks) */
+.bg-leaf-100\/70 { background-color: rgba(214, 240, 229, 0.7); }
+.bg-leaf-50\/70  { background-color: rgba(234, 248, 241, 0.7); }
+.bg-leaf-100\/50 { background-color: rgba(214, 240, 229, 0.5); }
+
+/* Fade-in animation */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
