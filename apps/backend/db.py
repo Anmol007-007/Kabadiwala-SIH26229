@@ -11,7 +11,6 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Standalone dependency function to break circular imports
 def get_db():
     db = SessionLocal()
     try:

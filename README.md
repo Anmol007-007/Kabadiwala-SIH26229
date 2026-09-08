@@ -1,4 +1,4 @@
-# Kabadiwala Connect (SIH26229)
+# Kabadiwala Connect
 ### Digital Public Infrastructure (DPI) for Urban Mining & Secondary Critical Minerals
 **Client Mandate:** Ministry of Mines, Government of India
 
@@ -81,5 +81,5 @@ npm run dev
 
 ---
 
-## 📄 License
-Developed for Smart India Hackathon (SIH 2024 / SIH26229).
+## 📄 Authority & Mandate
+Developed for Ministry of Mines, Government of India — Urban Mining DPI Initiative.

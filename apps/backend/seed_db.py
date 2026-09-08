@@ -22,7 +22,6 @@ def seed_database():
     print("[*] Resetting and initializing database tables...")
     Base.metadata.create_all(bind=engine)
 
-    # 1. Clean existing records (Optional: fresh start)
     db.query(EprLedger).delete()
     db.query(Batch).delete()
     db.query(ScrapTransaction).delete()
@@ -31,16 +30,15 @@ def seed_database():
 
     print("[+] Seeding Informal Collectors with GPS Coordinates...")
     collectors_data = [
-        {"name": "Ramesh Kumar", "phone": "+919876543210", "lat": 28.6139, "lng": 77.2090}, # Delhi
-        {"name": "Suresh Patel", "phone": "+919876543211", "lat": 19.0760, "lng": 72.8777}, # Mumbai
-        {"name": "Mukesh Sharma", "phone": "+919876543212", "lat": 12.9716, "lng": 77.5946}, # Bengaluru
-        {"name": "Anil Verma", "phone": "+919876543213", "lat": 23.1815, "lng": 79.9864},   # Jabalpur
-        {"name": "Deepak Yadav", "phone": "+919876543214", "lat": 22.5726, "lng": 88.3639}, # Kolkata
+        {"name": "Ramesh Kumar", "phone": "+919876543210", "lat": 28.6139, "lng": 77.2090},
+        {"name": "Suresh Patel", "phone": "+919876543211", "lat": 19.0760, "lng": 72.8777},
+        {"name": "Mukesh Sharma", "phone": "+919876543212", "lat": 12.9716, "lng": 77.5946},
+        {"name": "Anil Verma", "phone": "+919876543213", "lat": 23.1815, "lng": 79.9864},
+        {"name": "Deepak Yadav", "phone": "+919876543214", "lat": 22.5726, "lng": 88.3639},
     ]
 
     collector_objects = []
     for c in collectors_data:
-        # Create PostGIS Point geometry: Point(longitude, latitude)
         point_geom = from_shape(Point(c["lng"], c["lat"]), srid=4326)
         collector = Collector(name=c["name"], phone=c["phone"], geo_location=point_geom)
         db.add(collector)
@@ -72,7 +70,6 @@ def seed_database():
     db.commit()
 
     print("[+] Creating Dispatched Batches & QR Hashes...")
-    # Batch 1: Copper lot
     raw_payload = "BATCH-COPPER-500KG-AGG-001"
     batch_hash_1 = hashlib.sha256(raw_payload.encode()).hexdigest()
     

@@ -1,17 +1,60 @@
-version: '3.8'
-
 services:
   db:
-    image: postgis/postgis:15-3.3
+    image: postgis/postgis:16-3.4-alpine
     container_name: kabadiwala_db
+    restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpassword
-      POSTGRES_DB: urban_mining
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: kabadiwala
     ports:
       - "5432:5432"
     volumes:
-      - postgis_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: kabadiwala_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@db:5432/kabadiwala
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      - db
+
+  aggregator-web:
+    build:
+      context: ./apps/aggregator-web
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+        - NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN:-}
+        - NEXT_PUBLIC_COLLECTOR_PWA_URL=http://localhost:3001
+    container_name: kabadiwala_aggregator
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  collector-pwa:
+    build:
+      context: ./apps/collector-pwa
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+    container_name: kabadiwala_collector
+    restart: always
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
 
 volumes:
-  postgis_data:
+  pgdata:

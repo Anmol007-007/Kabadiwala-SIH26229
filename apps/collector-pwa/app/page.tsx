@@ -52,7 +52,6 @@ export default function CollectorPWA() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    // Monitor network online/offline status
     useEffect(() => {
         setIsOnline(navigator.onLine);
         const handleOnline = () => {
@@ -75,14 +74,12 @@ export default function CollectorPWA() {
     const loadTransactions = async () => {
         try {
             const txs = await getOfflineTransactions();
-            // Sort newest first
             setRecentTransactions(txs.reverse().slice(0, 10));
         } catch (e) {
             console.error('Failed to load transactions from IndexedDB', e);
         }
     };
 
-    // Sync offline transactions with backend
     const autoSync = async () => {
         try {
             const txs = await getOfflineTransactions();
@@ -171,18 +168,15 @@ export default function CollectorPWA() {
                 await loadTransactions();
             }
         } catch {
-            // Fallback offline storage
             alert('इंटरनेट धीमा है या बैकएंड अनुपलब्ध है। डेटा ऑफलाइन सुरक्षित कर लिया गया है।');
         } finally {
             setProcessing(false);
         }
     };
 
-    // Quick speech simulator for rapid testing
     const handleSimulateVoice = async (material: string, weight: number, price: number) => {
         setProcessing(true);
         try {
-            // Attempt backend sync
             let synced = false;
             try {
                 const res = await fetch(`${BASE_URL}/api/v1/transactions/sync`, {
@@ -215,20 +209,18 @@ export default function CollectorPWA() {
 
     return (
         <main className="min-h-screen bg-neutral-950 text-white flex flex-col justify-between p-4 sm:p-6 max-w-md mx-auto font-sans">
-            {/* Top Bar: Connectivity & Digital ID */}
             <header className="flex justify-between items-center py-3 border-b border-neutral-800">
                 <div>
                     <div className="flex items-center gap-2">
                         <h1 className="text-lg font-black text-amber-500 tracking-wide">कबाड़ी साथी</h1>
-                        <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono">
-                            SIH26229
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
+                            DPI-UM/2026
                         </span>
                     </div>
                     <p className="text-[11px] text-neutral-400">Urban Mining DPI • Ground Collector PWA</p>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Online/Offline Badge */}
                     <div
                         className={`flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${isOnline
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
@@ -239,7 +231,6 @@ export default function CollectorPWA() {
                         <span>{isOnline ? 'ऑनलाइन' : 'ऑफलाइन'}</span>
                     </div>
 
-                    {/* ID Card Toggle Button */}
                     <button
                         onClick={() => setShowIdCard(!showIdCard)}
                         className="p-2 bg-neutral-900 border border-neutral-700 rounded-xl flex items-center gap-1 text-xs font-semibold text-neutral-200 active:scale-95 transition-transform"
@@ -250,7 +241,6 @@ export default function CollectorPWA() {
                 </div>
             </header>
 
-            {/* Collector Digital ID Card Modal */}
             {showIdCard && (
                 <section className="bg-neutral-900 border border-amber-500/40 rounded-2xl p-5 my-4 text-center shadow-2xl relative">
                     <div className="flex items-center justify-center gap-1.5 text-emerald-400 text-xs font-bold mb-2 uppercase tracking-wider">
@@ -271,7 +261,6 @@ export default function CollectorPWA() {
                 </section>
             )}
 
-            {/* Main Voice-First Action Panel */}
             <section className="flex-1 flex flex-col items-center justify-center my-6 text-center">
                 <div className="mb-6">
                     <h2 className="text-2xl font-black mb-1.5 text-white">
@@ -283,7 +272,6 @@ export default function CollectorPWA() {
                     </p>
                 </div>
 
-                {/* Large Tactile Vernacular Microphone Button */}
                 <div className="relative">
                     {isRecording && (
                         <div className="absolute inset-0 rounded-full bg-red-600/30 animate-ping" />
@@ -319,7 +307,6 @@ export default function CollectorPWA() {
                     </div>
                 )}
 
-                {/* Field Testing Quick Simulation Buttons */}
                 <div className="mt-6 w-full">
                     <div className="flex items-center justify-center gap-1.5 text-[11px] text-neutral-500 mb-2">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -346,7 +333,6 @@ export default function CollectorPWA() {
                 </div>
             </section>
 
-            {/* Extracted Transaction Confirmation Card */}
             {extractedData && (
                 <section className="bg-neutral-900 border border-emerald-500/40 p-4 rounded-2xl mb-4 shadow-xl">
                     <div className="flex items-center justify-between mb-2.5">
@@ -381,7 +367,6 @@ export default function CollectorPWA() {
                 </section>
             )}
 
-            {/* Offline Logged Records & Sync Center */}
             <section className="bg-neutral-900 border border-neutral-800 rounded-2xl p-3.5 mb-2">
                 <div className="flex items-center justify-between">
                     <button
@@ -437,7 +422,6 @@ export default function CollectorPWA() {
                 )}
             </section>
 
-            {/* Footer System Attribution */}
             <footer className="text-center text-[10px] text-neutral-500 py-1">
                 खान मंत्रालय, भारत सरकार • राष्ट्रीय शहरी खनन डिजिटल इंफ्रास्ट्रक्चर (DPI)
             </footer>

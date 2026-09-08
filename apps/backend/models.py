@@ -15,7 +15,6 @@ class Collector(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     phone = Column(String, unique=True, index=True, nullable=False)
-    # PostGIS spatial column for Mapbox Heatmap integration (WGS84 SRID 4326)
     geo_location = Column(Geometry('POINT', srid=4326), nullable=True) 
 
     transactions = relationship("ScrapTransaction", back_populates="collector")
